@@ -1,0 +1,175 @@
+ #include<stdio.h>
+  2 #include<stdlib.h>
+  3 #include<unistd.h>
+  4 #include<string.h>
+  5 #include<pthread.h>
+  6 #include<signal.h>
+  7 
+  8 #define no_msg 20
+  9 
+ 10   FILE *fp,*fd;
+ 11 //pthread_mutex m1;
+ 12 int size=0;
+ 13 pthread_mutex_t m1= PTHREAD_MUTEX_INITIALIZER;
+ 14 pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
+ 15 
+ 16 struct node
+ 17 {
+ 18   int data;
+ 19   struct node *next;
+ 20 }*head = NULL;
+ 21 
+ 22 
+ 23 struct que
+ 24 {
+ 25   struct node *front, *rare;
+ 26 };
+ 27 
+ 28 
+ 29 struct que *create(int n)
+ 30 {
+ 31   struct que *q1=(struct que*)malloc(sizeof(struct que)*n);
+ 32   q1->front=q1->rare=NULL;
+ 33   return q1;
+ 34 }
+ 35 
+ 36 struct node* newnode(int value)
+ 37 {
+ 38   struct node *nu=(struct node*)malloc(sizeof(struct node));
+ 39   nu->data=value;
+ 40   nu->next=NULL;
+ 41   return nu;
+ 42 
+ 43 }
+ 44 
+ 45 void handler(int signum)
+ 46 {
+ 47   signal(SIGUSR1,handler);
+ 48   printf("no more enqueue\n");
+ 49 
+ 50 }
+ 51 
+ 52 void enqueue(struct que *q, int value)
+ 53 {
+ 54   struct node *nu ;
+ 55   nu=newnode(value);
+ 56   if (q->front == NULL)
+ 57     q->front = nu;
+ 58   else
+ 59     q->rare->next = nu;
+ 60 
+ 61   q->rare = nu;
+ 62   q->rare->next = q->front;
+ 63 }
+ 64 
+ 65 int dequeue(struct que *q)
+ 66 {
+ 67   int value;
+ 68   if (q->front == NULL)
+ 69   {
+ 70     printf ("Queue is empty");
+ 71     return 0;
+ 72   }
+ 73 
+ 74   if (q->front == q->rare)
+ 75   {
+ 76     value = q->front->data;
+ 77     free(q->front);
+ 78     q->front = NULL;
+ 79     q->rare = NULL;
+ 80   }
+ 81   else  // There are more than one nodes 
+ 82   {
+ 83     struct node *temp = q->front;
+ 84     value = temp->data;
+ 85     q->front = q->front->next;
+ 86     q->rare->next= q->front;
+ 87     free(temp);
+ 88   }
+ 89 
+ 90   return value ;
+ 91 }
+ 92 
+ 93 
+ 94 void display(struct que *q)
+ 95 {
+ 96   struct node *temp = q->front;
+ 97   printf("\nElements in Circular Queue are: ");
+ 98   while (temp->next != q->front)
+ 99   {
+100     printf("%d ", temp->data);
+101     temp = temp->next;
+102   }
+103   printf("%d", temp->data);
+104 }
+105 
+106 void *fun1(void* que)
+107 {
+108   int no,i,m;
+109   char *ret;
+110   pthread_mutex_lock( &m1 );
+111 signal(SIGUSR1,handler);
+112   scanf("%d",&no);
+113 
+114   for(i=0;i<no;i++)
+115   {
+116     scanf("%d",&m);
+117         enqueue(que,m);
+118         size++;
+119   }
+120   printf("enqeued %d msgs\n",no);
+121   if(size>=20)
+122     kill(getpid(),SIGUSR1);
+123   pthread_mutex_unlock( &m1 );
+124 }
+125 
+126 
+127 void *fun2(void* que)
+128 {
+129   int no,i,m;
+130 
+131   pthread_mutex_lock( &m1 );
+132 
+133 //printf("%d",no);
+134   scanf("%d",&no);
+135   for(i=0;i<no;i++)
+136   {
+137   //printf("%d ", dequeue(que));
+138 
+139        fprintf(fd,"%d ",dequeue(que));
+140   }
+141   printf("denqeued %d msgs\n",no);
+142   pthread_mutex_unlock( &m1 );
+143 }
+144 
+145 int main()
+146 {
+147   void *ret;
+148   pthread_t t1,t2;
+149   int request,no,t,i;
+150   fd=fopen("/home/patilkam/ipc/practice/1028/out.txt","a");
+151 fp=freopen("/home/patilkam/ipc/practice/1028/test.txt","r",stdin);
+152 //while(1){
+153 //  puts("enter request");
+154   struct que *q=create(no_msg);
+155   scanf("%d",&t);
+156 for(i=0;i<t;i++)
+157 {
+158   scanf("%d",&request);
+159 
+160 
+161   if(request==1)
+162     pthread_create(&t1,NULL,fun1,(void*)q);
+163 
+164  if(request==2)
+165     pthread_create(&t2,NULL,fun2,(void*)q);
+166 
+167 
+168   pthread_join(t1,NULL);
+169   pthread_join(t2,NULL);
+170 }
+171   /*
+172      enqueue(q,10);
+173      enqueue(q,20);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    1,1           Top
+
